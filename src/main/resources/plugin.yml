@@ -1,0 +1,23 @@
+name: UHCRun
+main: eu.thog.uhcrun.UHCRun
+version: 2.0
+depend: [WorldEdit]
+load: STARTUP
+commands:
+   nextevent:
+      description: Switch to the next game event
+      usage: /<command>
+      permission: uhcrun.nextevent
+      permission-message: Permission denied
+   startgame:
+      description: Start the game
+      usage: /<command>
+      permission: uhcrun.start
+      permission-message: Permission denied
+permissions:
+   uhcrun.*:
+     description: Gives access to all UHCRun functionnalities
+     children:
+       uhcrun.teamname: true
+       uhcrun.teamlock: true
+       uhcrun.teaminvite: true

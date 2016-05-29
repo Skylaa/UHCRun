@@ -1,0 +1,6 @@
+/**
+ * This file is a part of the UHCRun Project CodeBase
+ * Created by Thog
+ * (C) Copyright Thomas Guillemard 2016
+ * All rights reserved.
+ */

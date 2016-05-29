@@ -1,0 +1,97 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'checkstyle'
+
+group = 'eu.thog'
+version = '2.0.0'
+archivesBaseName = 'uhcrun'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+//force UTF-8 to the compileJava task
+compileJava.options.encoding = 'UTF-8'
+
+checkstyle {
+    toolVersion = "6.7"
+    configFile = file('guidelines/uhcrun.checkstyle')
+}
+
+repositories {
+    mavenCentral()
+    maven { url "http://maven.samagames.net/public/" }
+    maven { url "http://maven.sk89q.com/repo/" }
+    maven { url "http://repo.stealthyone.com/content/groups/public"}
+}
+
+configurations {
+    bundle {
+    }
+    server {
+    }
+    plugins {
+    }
+    compile.extendsFrom server
+    compile.extendsFrom bundle
+}
+
+configurations.all {
+    // check for updates every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    bundle fileTree(dir: 'libs', include: '*.jar')
+    bundle(group: "mkremins", name: 'fanciful', version: '0.3.3-SNAPSHOT')
+    server(group: 'org.spigotmc', name: 'spigot', version: '1.8.8-R0.1-SNAPSHOT', changing: true) {
+        transitive = false
+    }
+    compile(group: 'com.sk89q.worldedit', name: 'worldedit-bukkit', version: '6.1.1-SNAPSHOT', changing: true) {
+        exclude module: 'bukkit'
+        exclude module: 'bukkit-classloader-check'
+    }
+}
+
+jar {
+    def bundled = configurations.bundle.collect { it.isDirectory() ? it : zipTree(it) };
+    from (bundled) {  exclude {
+        it.file.name == "plugin.yml" || it.file.name == "config.yml";
+    }}
+}
+
+task createServer(type: Copy, dependsOn: build) {
+    File instanceDir = new File(projectDir, "instance")
+    outputs.files { instanceDir }
+    instanceDir.mkdir();
+    if (!instanceDir.exists())
+        throw new RuntimeException("Can't create Server directory!")
+    File plugins = new File(instanceDir, "plugins")
+    plugins.mkdir()
+    configurations.server.files.each {
+        from(it)
+        into { instanceDir }
+        File shFile = new File(instanceDir, "start.sh")
+        shFile.delete()
+        shFile.createNewFile()
+        shFile.setExecutable(true)
+        shFile.write("java -Dcom.mojang.eula.agree=true -jar " + it.name)
+    }
+}
+task prepareServerStart(type: Copy, dependsOn: createServer) {
+    outputs.upToDateWhen { false }
+    File pluginsDir = new File(projectDir, "instance/plugins")
+    from configurations.plugins.files
+    from libsDir
+    into pluginsDir
+    ant.replaceregexp(match: 'late-bind:(.*)', replace: 'late-bind: true', flags: 'g', byline: true) {
+        fileset(dir: new File(projectDir, "instance"), includes: 'spigot.yml')
+    }
+}
+task startServer(type: Exec, dependsOn: prepareServerStart) {
+    workingDir 'instance'
+    commandLine 'sh', 'start.sh'
+    standardOutput = System.out
+    standardInput = System.in
+}
